@@ -31,6 +31,18 @@ export class PluginDataIO {
     })
   }
 
+  async _getRemindersFromCache(): Promise<{[filePath: string]: Array<ReminderData>}> {
+    const data = localStorage.getItem("reminders");
+    if (!data) {
+      return {};
+    }
+    return JSON.parse(data);
+  }
+
+  async _saveRemindersToCache(reminders: {[filePath: string]: Array<ReminderData>}) {
+    localStorage.setItem("reminders", JSON.stringify(reminders));
+  }
+
   async load() {
     console.debug("Load reminder plugin data");
     const data = await this.plugin.loadData();
@@ -47,6 +59,8 @@ export class PluginDataIO {
     SETTINGS.forEach(setting => {
       setting.load(loadedSettings);
     })
+
+    data.reminders = await this._getRemindersFromCache();
 
     if (data.reminders) {
       Object.keys(data.reminders).forEach((filePath) => {
@@ -92,13 +106,15 @@ export class PluginDataIO {
         rowNumber: rr.rowNumber,
       }));
     });
+
+    await this._saveRemindersToCache(remindersData);
+
     const settings = {};
     SETTINGS.forEach(setting => {
       setting.store(settings);
     })
     await this.plugin.saveData({
       scanned: this.scanned.value,
-      reminders: remindersData,
       debug: this.debug.value,
       settings
     });
